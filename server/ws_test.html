@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket 测试客户端</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f5f7fa;
+            padding: 20px;
+        }
+        .card {
+            background: #fff;
+            border-radius: 4px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+        }
+        .card-title {
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e8eaec;
+        }
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            margin-bottom: 16px;
+        }
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ccc;
+        }
+        .dot.connected { background: #52c41a; }
+        .dot.connecting { background: #faad14; }
+        .dot.error { background: #ff4d4f; }
+        
+        .input-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #dcdfe6;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        input:focus {
+            outline: none;
+            border-color: #0052d9;
+        }
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .btn-primary { background: #0052d9; color: #fff; }
+        .btn-primary:hover { background: #0041b8; }
+        .btn-danger { background: #ff4d4f; color: #fff; }
+        .btn-success { background: #52c41a; color: #fff; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .log {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 12px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            height: 300px;
+            overflow-y: auto;
+        }
+        .log-item { padding: 2px 0; }
+        .log-item.info { color: #6cb6ff; }
+        .log-item.success { color: #7ee787; }
+        .log-item.error { color: #f97583; }
+        .log-item.recv { color: #a5d6ff; }
+        .log-item.send { color: #ffa657; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="card-title">WebSocket 测试客户端</div>
+        
+        <div class="status">
+            <div class="dot" id="statusDot"></div>
+            <span id="statusText">未连接</span>
+        </div>
+        
+        <div class="input-row">
+            <input type="text" id="serverIP" placeholder="服务器IP" value="192.168.147.163">
+            <input type="text" id="serverPort" placeholder="端口" value="8080" style="width: 80px; flex: none;">
+        </div>
+        
+        <div class="input-row">
+            <button class="btn btn-primary" id="btnConnect" onclick="connect()">连接</button>
+            <button class="btn btn-danger" id="btnDisconnect" onclick="disconnect()" disabled>断开</button>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-title">发送消息</div>
+        <div class="input-row">
+            <input type="text" id="message" placeholder="输入消息..." value='{"type":"test","data":"hello"}'>
+            <button class="btn btn-success" id="btnSend" onclick="sendMessage()" disabled>发送</button>
+        </div>
+        
+        <div style="margin-top: 12px;">
+            <button class="btn btn-primary" onclick="sendStart()" style="margin-right: 8px;">发送 start</button>
+            <button class="btn btn-danger" onclick="sendStop()">发送 stop</button>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-title">日志</div>
+        <div class="log" id="log"></div>
+    </div>
+
+    <script>
+        let ws = null;
+        
+        function log(msg, type = 'info') {
+            const logEl = document.getElementById('log');
+            const time = new Date().toLocaleTimeString();
+            const div = document.createElement('div');
+            div.className = `log-item ${type}`;
+            div.textContent = `[${time}] ${msg}`;
+            logEl.appendChild(div);
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+        
+        function updateStatus(status) {
+            const dot = document.getElementById('statusDot');
+            const text = document.getElementById('statusText');
+            const btnConnect = document.getElementById('btnConnect');
+            const btnDisconnect = document.getElementById('btnDisconnect');
+            const btnSend = document.getElementById('btnSend');
+            
+            dot.className = 'dot ' + status;
+            
+            switch(status) {
+                case 'connected':
+                    text.textContent = '已连接';
+                    btnConnect.disabled = true;
+                    btnDisconnect.disabled = false;
+                    btnSend.disabled = false;
+                    break;
+                case 'connecting':
+                    text.textContent = '连接中...';
+                    btnConnect.disabled = true;
+                    btnDisconnect.disabled = true;
+                    btnSend.disabled = true;
+                    break;
+                case 'error':
+                    text.textContent = '连接失败';
+                    btnConnect.disabled = false;
+                    btnDisconnect.disabled = true;
+                    btnSend.disabled = true;
+                    break;
+                default:
+                    text.textContent = '未连接';
+                    btnConnect.disabled = false;
+                    btnDisconnect.disabled = true;
+                    btnSend.disabled = true;
+            }
+        }
+        
+        function connect() {
+            const ip = document.getElementById('serverIP').value;
+            const port = document.getElementById('serverPort').value;
+            const url = `ws://${ip}:${port}`;
+            
+            log(`正在连接: ${url}`, 'info');
+            updateStatus('connecting');
+            
+            try {
+                ws = new WebSocket(url);
+                
+                ws.onopen = () => {
+                    log('连接成功!', 'success');
+                    updateStatus('connected');
+                };
+                
+                ws.onmessage = (event) => {
+                    log(`收到: ${event.data}`, 'recv');
+                };
+                
+                ws.onerror = (error) => {
+                    log('连接错误', 'error');
+                    updateStatus('error');
+                };
+                
+                ws.onclose = () => {
+                    log('连接关闭', 'info');
+                    updateStatus('');
+                };
+            } catch (e) {
+                log(`错误: ${e.message}`, 'error');
+                updateStatus('error');
+            }
+        }
+        
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+        
+        function sendMessage() {
+            const msg = document.getElementById('message').value;
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(msg);
+                log(`发送: ${msg}`, 'send');
+            }
+        }
+        
+        function sendStart() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const msg = '{"type":"start"}';
+                ws.send(msg);
+                log(`发送: ${msg}`, 'send');
+            }
+        }
+        
+        function sendStop() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const msg = '{"type":"stop"}';
+                ws.send(msg);
+                log(`发送: ${msg}`, 'send');
+            }
+        }
+        
+        log('测试客户端已就绪', 'info');
+    </script>
+</body>
+</html>
+

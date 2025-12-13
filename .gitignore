@@ -1,0 +1,68 @@
+# Unity generated
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+
+# Visual Studio / MonoDevelop generated
+.vs/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.opendb
+*.VC.db
+
+# Unity3D generated meta files
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+
+# Unity3D Generated File On Crash Reports
+sysinfo.txt
+
+# Builds
+*.apk
+*.aab
+*.unitypackage
+
+# Android Studio / Gradle
+.gradle/
+/server/DeepEyeApp/.gradle/
+/server/DeepEyeApp/local.properties
+/server/DeepEyeApp/.idea/
+/server/DeepEyeApp/build/
+/server/DeepEyeApp/app/build/
+/server/DeepEyeApp/captures/
+*.iml
+
+# OS generated
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Burst
+deepEyeOri_BurstDebugInformation_DoNotShip/
+
+# Others
+*.log
+
+# Keystore
+*.jks
+*.keystore
+simple.jks
+
